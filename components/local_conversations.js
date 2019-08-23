@@ -1,21 +1,28 @@
 // this module is used to create local conversations with your bot
+const axios = require('axios');
+var res = {};
 module.exports = function localConversations(controller) {
     
-    // simple example of single answer script
-    // controller.hears('test', 'direct_message,live_chat,channel,private_channel', function (bot, message) {
-    //     console.log(message)
-    //     bot.send(message, 'I heard a test message');
-    // });
+    controller.hears(['Hi'], 'direct_message,live_chat,channel,private_channel', function (bot, message) {
+         bot.startConversation(message, function (err, convo) {
+			convo.say('Hello ' + message.raw_message.u.name);
+			convo.say('Please send me a Diff URL or Pull Request URL or Commit URL to review the code.');
+		 });
+     });
 
-    // simple example of implementing conversation
-    controller.hears(['color'], 'direct_message,live_chat,channel,private_channel', function (bot, message) {
-        bot.startConversation(message, function (err, convo) {
-            convo.say('This is an example of using convo.ask with a single callback without use Botkit API.');
-            convo.say('To remove-me please got to /components/local_conversations.js');
-            convo.ask('What is your favorite color?', function (response, convo) {
-                convo.say('Cool, I like ' + response.text + ' too!');
-                convo.next();
-            });
-        });
-    });
+    controller.hears('https://stash.ghx.com:7893/*', 'direct_message,live_chat,channel,private_channel', async(bot, message) => {
+		axios.post('http://localhost:8080/code-review-service/review', {
+			"reviewUrl": `${ message.text }`
+		})
+		.then(function (response) {
+			res = response.data;
+			resJson = JSON.stringify(res);
+            bot.reply(message,{ text: "Request ID: " + `${res.reviewRequestId}` 
++ "\nFiles Reviewed: " + `${res.numOfAnalyzedFiles}` + "\nNumber of Comments: " + `${res.numOfComments}` + "\nCheck out https://code-review.smi.com/" + `${res.reviewRequestId}` + " for more details."});
+            console.log(":", res);
+		})
+		.catch(function (error) {
+			console.log(error);
+		});
+	});
 }
